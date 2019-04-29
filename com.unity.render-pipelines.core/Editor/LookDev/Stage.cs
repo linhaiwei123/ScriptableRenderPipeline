@@ -16,6 +16,7 @@ namespace UnityEditor.Rendering.LookDev
 
         // Everything except camera
         private readonly List<GameObject> m_GameObjects = new List<GameObject>();
+        private readonly List<GameObject> m_PersistentGameObjects = new List<GameObject>();
         private readonly Camera m_Camera;
 
         /// <summary>Get access to the stage's camera</summary>
@@ -23,6 +24,10 @@ namespace UnityEditor.Rendering.LookDev
 
         /// <summary>Get access to the stage's scene</summary>
         public Scene scene => m_PreviewScene;
+
+        private StageRuntimeInterface SRI;
+        public StageRuntimeInterface runtimeInterface
+            => SRI ?? (SRI = new StageRuntimeInterface(CreateGameObjectIntoStage, () => camera));
 
         /// <summary>
         /// Construct a new stage to let your object live.
@@ -38,15 +43,11 @@ namespace UnityEditor.Rendering.LookDev
             m_PreviewScene.name = sceneName;
             
             var camGO = EditorUtility.CreateGameObjectWithHideFlags("Look Dev Camera", HideFlags.HideAndDontSave, typeof(Camera));
-            
-            SceneManager.MoveGameObjectToScene(camGO, m_PreviewScene);
-            camGO.transform.position = new Vector3(0, 0, -6);
-            camGO.transform.rotation = Quaternion.identity;
-            camGO.hideFlags = HideFlags.HideAndDontSave;
+            MoveIntoStage(camGO, new Vector3(0, 0, -6), Quaternion.identity, true);
             camGO.layer = k_PreviewCullingLayerIndex;
 
             m_Camera = camGO.GetComponent<Camera>();
-            m_Camera.cameraType = CameraType.Preview;
+            m_Camera.cameraType = CameraType.Game;  //cannot be preview in HDRP: too many things skiped
             m_Camera.enabled = false;
             m_Camera.clearFlags = CameraClearFlags.Depth;
             m_Camera.fieldOfView = 90;
@@ -56,6 +57,13 @@ namespace UnityEditor.Rendering.LookDev
             m_Camera.renderingPath = RenderingPath.DeferredShading;
             m_Camera.useOcclusionCulling = false;
             m_Camera.scene = m_PreviewScene;
+        }
+        
+        ~Stage()
+        {
+            if (SRI != null)
+                SRI.SRPData = null;
+            SRI = null;
         }
 
         /// <summary>
@@ -82,14 +90,17 @@ namespace UnityEditor.Rendering.LookDev
                 throw new System.Exception("Stage's scene was not created correctly");
         }
 
-
         /// <summary>
         /// Move a GameObject into the stage's scene at origin.
         /// </summary>
         /// <param name="gameObject">The gameObject to move.</param>
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, the object is not recreated with the scene update.
+        /// Default value: false.
+        /// </param>
         /// <seealso cref="InstantiateIntoStage"/>
-        public void MoveIntoStage(GameObject gameObject)
-            => MoveIntoStage(gameObject, Vector3.zero, Quaternion.identity);
+        public void MoveIntoStage(GameObject gameObject, bool persistent = false)
+            => MoveIntoStage(gameObject, Vector3.zero, Quaternion.identity, persistent);
 
         /// <summary>
         /// Move a GameObject into the stage's scene at specific position and
@@ -98,8 +109,12 @@ namespace UnityEditor.Rendering.LookDev
         /// <param name="gameObject">The gameObject to move.</param>
         /// <param name="position">The new world position</param>
         /// <param name="rotation">The new world rotation</param>
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, the object is not recreated with the scene update.
+        /// Default value: false.
+        /// </param>
         /// <seealso cref="InstantiateIntoStage"/>
-        public void MoveIntoStage(GameObject gameObject, Vector3 position, Quaternion rotation)
+        public void MoveIntoStage(GameObject gameObject, Vector3 position, Quaternion rotation, bool persistent = false)
         {
             if (m_GameObjects.Contains(gameObject))
                 return;
@@ -107,7 +122,10 @@ namespace UnityEditor.Rendering.LookDev
             SceneManager.MoveGameObjectToScene(gameObject, m_PreviewScene);
             gameObject.transform.position = position;
             gameObject.transform.rotation = rotation;
-            m_GameObjects.Add(gameObject);
+            if (persistent)
+                m_PersistentGameObjects.Add(gameObject);
+            else
+                m_GameObjects.Add(gameObject);
 
             InitAddedObjectsRecursively(gameObject);
         }
@@ -117,10 +135,14 @@ namespace UnityEditor.Rendering.LookDev
         /// It is instantiated at origin.
         /// </summary>
         /// <param name="prefabOrSceneObject">The element to instantiate</param>
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, the object is not recreated with the scene update.
+        /// Default value: false.
+        /// </param>
         /// <returns>The instance</returns>
         /// <seealso cref="MoveIntoStage"/>
-        public GameObject InstantiateIntoStage(GameObject prefabOrSceneObject)
-            => InstantiateIntoStage(prefabOrSceneObject, Vector3.zero, Quaternion.identity);
+        public GameObject InstantiateIntoStage(GameObject prefabOrSceneObject, bool persistent = false)
+            => InstantiateIntoStage(prefabOrSceneObject, Vector3.zero, Quaternion.identity, persistent);
 
         /// <summary>
         /// Instantiate a scene GameObject or a prefab into the stage's scene
@@ -129,29 +151,56 @@ namespace UnityEditor.Rendering.LookDev
         /// <param name="prefabOrSceneObject">The element to instantiate</param>
         /// <param name="position">The new world position</param>
         /// <param name="rotation">The new world rotation</param>
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, the object is not recreated with the scene update.
+        /// Default value: false.
+        /// </param>
         /// <returns>The instance</returns>
         /// <seealso cref="MoveIntoStage"/>
-        public GameObject InstantiateIntoStage(GameObject prefabOrSceneObject, Vector3 position, Quaternion rotation)
+        public GameObject InstantiateIntoStage(GameObject prefabOrSceneObject, Vector3 position, Quaternion rotation, bool persistent = false)
         {
             var handle = GameObject.Instantiate(prefabOrSceneObject);
-            MoveIntoStage(handle, position, rotation);
+            MoveIntoStage(handle, position, rotation, persistent);
+            return handle;
+        }
+
+        /// <summary>Create a GameObject into the stage.</summary>
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, the object is not recreated with the scene update.
+        /// Default value: false.
+        /// </param>
+        /// <returns>The created GameObject</returns>
+        public GameObject CreateGameObjectIntoStage(bool persistent = false)
+        {
+            var handle = new GameObject();
+            MoveIntoStage(handle, persistent);
             return handle;
         }
 
         /// <summary>Clear and close the stage's scene.</summary>
         public void Dispose()
         {
-            Clear();
-            UnityEngine.Object.DestroyImmediate(camera);
+            Clear(persistent: true);
             EditorSceneManager.ClosePreviewScene(m_PreviewScene);
         }
 
         /// <summary>Clear all scene object except camera.</summary>
-        public void Clear()
+        /// <param name="persistent">
+        /// [OPTIONAL] If true, clears also persistent objects.
+        /// Default value: false.
+        /// </param>
+        public void Clear(bool persistent = false)
         {
             foreach (var go in m_GameObjects)
                 UnityEngine.Object.DestroyImmediate(go);
             m_GameObjects.Clear();
+
+            if (persistent)
+            {
+                foreach (var go in m_PersistentGameObjects)
+                    UnityEngine.Object.DestroyImmediate(go);
+                m_PersistentGameObjects.Clear();
+            }
         }
 
         static void InitAddedObjectsRecursively(GameObject go)
@@ -228,37 +277,28 @@ namespace UnityEditor.Rendering.LookDev
                     throw new ArgumentException("Unknown ViewIndex: " + index);
             }
 
+            dataProvider.FirstInit(stage.runtimeInterface);
             CustomRenderSettings renderSettings = dataProvider.GetEnvironmentSetup();
-            if (Unsupported.SetOverrideRenderSettings(stage.scene))
-            {
-                RenderSettings.defaultReflectionMode = renderSettings.defaultReflectionMode;
-                RenderSettings.customReflection = renderSettings.customReflection;
-                RenderSettings.skybox = renderSettings.skybox;
-                RenderSettings.ambientMode = renderSettings.ambientMode;
-                Unsupported.useScriptableRenderPipeline = true;
-                Unsupported.RestoreOverrideRenderSettings();
-            }
-            else
-                throw new System.Exception("Stage's scene was not created correctly");
-
-            dataProvider.SetupCamera(stage.camera);
+            stage.ChangeRenderSettings(renderSettings);
 
             return stage;
         }
 
-        public void UpdateScene(ViewIndex index)
+        public void UpdateSceneObjects(ViewIndex index)
         {
             Stage stage = this[index];
             stage.Clear();
+
             var viewContent = m_Contexts.GetViewContent(index);
             if (viewContent == null)
             {
-                viewContent.prefabInstanceInPreview = null;
+                viewContent.viewedInstanceInPreview = null;
                 return;
             }
 
-            if (viewContent.contentPrefab != null && !viewContent.contentPrefab.Equals(null))
-                viewContent.prefabInstanceInPreview = stage.InstantiateIntoStage(viewContent.contentPrefab);
+            if (viewContent.viewedObjectReference != null && !viewContent.viewedObjectReference.Equals(null))
+                viewContent.viewedInstanceInPreview = stage.InstantiateIntoStage(viewContent.viewedObjectReference);
+        }
         }
     }
 }
