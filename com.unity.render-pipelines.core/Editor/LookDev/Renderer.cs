@@ -49,6 +49,25 @@ namespace UnityEditor.Rendering.LookDev
             data.stage.camera.enabled = false;
             data.stage.SetGameObjectVisible(false);
         }
+        
+        internal static void DrawFullScreenQuad(Rect rect)
+        {
+            GL.PushMatrix();
+            GL.LoadOrtho();
+            GL.Viewport(rect);
+
+            GL.Begin(GL.QUADS);
+            GL.TexCoord2(0, 0);
+            GL.Vertex3(0f, 0f, 0);
+            GL.TexCoord2(0, 1);
+            GL.Vertex3(0f, 1f, 0);
+            GL.TexCoord2(1, 1);
+            GL.Vertex3(1f, 1f, 0);
+            GL.TexCoord2(1, 0);
+            GL.Vertex3(1f, 0f, 0);
+            GL.End();
+            GL.PopMatrix();
+        }
     }
 
     public static partial class RectExtension

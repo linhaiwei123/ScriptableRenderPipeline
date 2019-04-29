@@ -11,7 +11,7 @@ namespace UnityEditor.Rendering.LookDev
         const float k_ReferenceScale = 1080f;
 
         ComparisonGizmoState state;
-        IDisplayer displayer;
+        IViewDisplayer displayer;
 
         enum Selected
         {
@@ -25,15 +25,15 @@ namespace UnityEditor.Rendering.LookDev
 
         Vector2 savedRelativePositionOnMouseDown;
 
-        public ComparisonGizmo(ComparisonGizmoState state, IDisplayer displayer)
+        public ComparisonGizmo(ComparisonGizmoState state, IViewDisplayer displayer)
         {
             this.state = state;
             this.displayer = displayer;
-            displayer.OnMouseEventInViewPort += Update;
+            displayer.OnMouseEventInView += Update;
         }
 
         void IDisposable.Dispose()
-            => displayer.OnMouseEventInViewPort -= Update;
+            => displayer.OnMouseEventInView -= Update;
 
         void Update(IMouseEvent mouseEvent)
         {

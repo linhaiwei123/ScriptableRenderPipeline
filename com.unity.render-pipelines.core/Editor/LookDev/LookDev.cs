@@ -15,25 +15,26 @@ namespace UnityEditor.Rendering.LookDev
         const string lastRenderingDataSavePath = "Library/LookDevConfig.asset";
 
         //TODO: ensure only one displayer at time for the moment
-        static IDisplayer s_Displayer;
+        static IViewDisplayer s_Displayer;
         static Compositer s_Compositor;
         static StageCache s_Stages;
         static ComparisonGizmo s_Comparator;
 
-        public static bool open { get; private set; }
-
         static IDataProvider dataProvider
             => RenderPipelineManager.currentPipeline as IDataProvider;
 
+        public static Context currentContext { get; private set; }
+
+        //[TODO: not compatible with multiple displayer. To rework if needed]
+        public static IViewDisplayer currentDisplayer => s_Displayer;
+
+        public static bool open { get; private set; }
+        
         /// <summary>
         /// Does LookDev is supported with the current render pipeline?
         /// </summary>
         public static bool supported => dataProvider != null;
         
-        public static Context currentContext { get; private set; }
-
-        public static IDisplayer currentDisplayer => s_Displayer;
-
         static LookDev()
             => currentContext = LoadConfigInternal() ?? GetDefaultContext();
 

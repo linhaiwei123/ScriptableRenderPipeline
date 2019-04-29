@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace UnityEditor.Rendering.LookDev
 {
-    public interface IDisplayer
+    public interface IViewDisplayer
     {
         Rect GetRect(ViewCompositionIndex index);
         void SetTexture(ViewCompositionIndex index, Texture texture);
@@ -30,7 +30,7 @@ namespace UnityEditor.Rendering.LookDev
     /// <summary>
     /// Displayer and User Interaction 
     /// </summary>
-    internal class DisplayWindow : EditorWindow, IDisplayer
+    internal class DisplayWindow : EditorWindow, IViewDisplayer, IEnvironmentDisplayer
     {
         static class Style
         {
@@ -141,42 +141,41 @@ namespace UnityEditor.Rendering.LookDev
         }
         
         event Action<Layout> OnLayoutChangedInternal;
-        event Action<Layout> IDisplayer.OnLayoutChanged
+        event Action<Layout> IViewDisplayer.OnLayoutChanged
         {
             add => OnLayoutChangedInternal += value;
             remove => OnLayoutChangedInternal -= value;
         }
 
         event Action OnRenderDocAcquisitionTriggeredInternal;
-        event Action IDisplayer.OnRenderDocAcquisitionTriggered
+        event Action IViewDisplayer.OnRenderDocAcquisitionTriggered
         {
             add => OnRenderDocAcquisitionTriggeredInternal += value;
             remove => OnRenderDocAcquisitionTriggeredInternal -= value;
         }
 
         event Action<IMouseEvent> OnMouseEventInViewPortInternal;
-        event Action<IMouseEvent> IDisplayer.OnMouseEventInViewPort
+        event Action<IMouseEvent> IViewDisplayer.OnMouseEventInView
         {
             add => OnMouseEventInViewPortInternal += value;
             remove => OnMouseEventInViewPortInternal -= value;
         }
 
         event Action<GameObject, ViewCompositionIndex, Vector2> OnChangingObjectInViewInternal;
-        event Action<GameObject, ViewCompositionIndex, Vector2> IDisplayer.OnChangingObjectInView
+        event Action<GameObject, ViewCompositionIndex, Vector2> IViewDisplayer.OnChangingObjectInView
         {
             add => OnChangingObjectInViewInternal += value;
             remove => OnChangingObjectInViewInternal -= value;
         }
 
         event Action<GameObject, ViewCompositionIndex, Vector2> OnChangingEnvironmentInViewInternal;
-        event Action<GameObject, ViewCompositionIndex, Vector2> IDisplayer.OnChangingEnvironmentInView
         {
             add => OnChangingEnvironmentInViewInternal += value;
             remove => OnChangingEnvironmentInViewInternal -= value;
         }
 
         event Action OnClosedInternal;
-        event Action IDisplayer.OnClosed
+        event Action IViewDisplayer.OnClosed
         {
             add => OnClosedInternal += value;
             remove => OnClosedInternal -= value;
@@ -294,7 +293,7 @@ namespace UnityEditor.Rendering.LookDev
             //to complete
         }
 
-        Rect IDisplayer.GetRect(ViewCompositionIndex index)
+        Rect IViewDisplayer.GetRect(ViewCompositionIndex index)
         {
             switch (index)
             {
@@ -308,7 +307,7 @@ namespace UnityEditor.Rendering.LookDev
             }
         }
 
-        void IDisplayer.SetTexture(ViewCompositionIndex index, Texture texture)
+        void IViewDisplayer.SetTexture(ViewCompositionIndex index, Texture texture)
         {
             switch (index)
             {
@@ -326,6 +325,6 @@ namespace UnityEditor.Rendering.LookDev
             }
         }
 
-        void IDisplayer.Repaint() => Repaint();
+        void IViewDisplayer.Repaint() => Repaint();
     }
 }

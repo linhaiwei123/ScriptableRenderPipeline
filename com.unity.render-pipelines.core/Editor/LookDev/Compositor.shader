@@ -1,4 +1,4 @@
-Shader "Hidden/LookDevCompositor"
+Shader "Hidden/LookDev/Compositor"
 {
     Properties
     {

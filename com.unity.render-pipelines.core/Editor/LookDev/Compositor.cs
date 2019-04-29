@@ -73,9 +73,9 @@ namespace UnityEditor.Rendering.LookDev
     {
         public static readonly Color firstViewGizmoColor = new Color32(0, 154, 154, 255);
         public static readonly Color secondViewGizmoColor = new Color32(255, 37, 4, 255);
-        static Material s_MaterialCompositer = new Material(Shader.Find("Hidden/LookDevCompositor"));
+        static Material s_MaterialCompositer = new Material(Shader.Find("Hidden/LookDev/Compositor"));
 
-        IDisplayer m_Displayer;
+        IViewDisplayer m_Displayer;
         Context m_Contexts;
         RenderTextureCache m_RenderTextures = new RenderTextureCache();
         StageCache m_Stages;
@@ -96,7 +96,7 @@ namespace UnityEditor.Rendering.LookDev
         bool m_RenderDocAcquisitionRequested;
         
         public Compositer(
-            IDisplayer displayer,
+            IViewDisplayer displayer,
             Context contexts,
             IDataProvider dataProvider,
             StageCache stages)
@@ -295,30 +295,12 @@ namespace UnityEditor.Rendering.LookDev
             s_MaterialCompositer.SetVector("_ToneMapCoeffs2", tonemapCoeff2);
             s_MaterialCompositer.SetPass((int)m_Contexts.layout.viewLayout); //missing horizontal pass
 
-            DrawFullScreenQuad(new Rect(0, 0, rect.width, rect.height));
+            Renderer.DrawFullScreenQuad(new Rect(0, 0, rect.width, rect.height));
 
             RenderTexture.active = oldActive;
             //GUI.DrawTexture(rect, m_RenderTextures[ViewCompositionIndex.Composite], ScaleMode.StretchToFill, false);
         }
 
-        void DrawFullScreenQuad(Rect rect)
-        {
-            GL.PushMatrix();
-            GL.LoadOrtho();
-            GL.Viewport(rect);
-
-            GL.Begin(GL.QUADS);
-            GL.TexCoord2(0, 0);
-            GL.Vertex3(0f, 0f, 0);
-            GL.TexCoord2(0, 1);
-            GL.Vertex3(0f, 1f, 0);
-            GL.TexCoord2(1, 1);
-            GL.Vertex3(1f, 1f, 0);
-            GL.TexCoord2(1, 0);
-            GL.Vertex3(1f, 0f, 0);
-            GL.End();
-            GL.PopMatrix();
-        }
 
         public ViewIndex GetViewFromComposition(Vector2 localCoordinate)
         {
