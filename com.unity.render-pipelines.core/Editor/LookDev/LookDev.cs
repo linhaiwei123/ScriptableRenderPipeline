@@ -121,6 +121,13 @@ namespace UnityEditor.Rendering.LookDev
                 SaveConfig();
 
                 open = false;
+
+                //free references for memory cleaning
+                s_Displayer = null;
+                s_Stages = null;
+                s_Comparator = null;
+                s_Compositor = null;
+                //currentContext = null;
             };
             s_Displayer.OnChangingObjectInView += (go, index, localPos) =>
             {
