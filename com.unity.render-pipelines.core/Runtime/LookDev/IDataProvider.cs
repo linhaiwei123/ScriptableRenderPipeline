@@ -2,8 +2,9 @@ namespace UnityEngine.Rendering.LookDev
 {
     public interface IDataProvider
     {
+        void FirstInit(StageRuntimeInterface stage);
         CustomRenderSettings GetEnvironmentSetup();
-        void SetupCamera(Camera camera);
+        void UpdateSky(Camera camera, Cubemap skybox, StageRuntimeInterface stage);
     }
 
     public struct CustomRenderSettings
