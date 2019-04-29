@@ -90,7 +90,12 @@ namespace UnityEditor.Rendering.LookDev
     [System.Serializable]
     public class ViewContext
     {
+        //Environment asset, sub-asset (under a library) or cubemap
+        [SerializeField]
+        string environmentGUID = ""; //Empty GUID
 
+        /// <summary>The currently used Environment</summary>
+        public Environment environment { get; private set; }
         
         [SerializeField]
         string viewedObjectAssetGUID = ""; //Empty GUID
@@ -110,6 +115,53 @@ namespace UnityEditor.Rendering.LookDev
         /// See <see cref="LookDev.PushSceneChangesToRenderer(ViewIndex)"/>
         /// </summary>
         public GameObject viewedInstanceInPreview { get; internal set; }
+
+        /// <summary>Update the environment used.</summary>
+        /// <param name="environmentAsset">The new <see cref="Environment"/> to use.</param>
+        public void UpdateEnvironment(Environment environmentAsset)
+        {
+            environmentGUID = "";
+            environment = null;
+            if (environmentAsset == null || environmentAsset.Equals(null))
+                return;
+
+            environmentGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(environmentAsset));
+            environment = environmentAsset;
+        }
+
+        /// <summary>Update the environment used.</summary>
+        /// <param name="environmentAsset">The <see cref="Cubemap"/> to build a new <see cref="Environment"/>.</param>
+        public void UpdateEnvironment(Cubemap cubemapAsset)
+        {
+            environmentGUID = "";
+            environment = null;
+            if (cubemapAsset == null || cubemapAsset.Equals(null))
+                return;
+
+            environmentGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(cubemapAsset));
+            environment = new Environment();
+            environment.sky.cubemap = cubemapAsset;
+        }
+
+        void LoadEnvironmentFromGUID()
+        {
+            environment = null;
+
+            GUID storedGUID;
+            GUID.TryParse(environmentGUID, out storedGUID);
+            if (storedGUID.Empty())
+                return;
+
+            string path = AssetDatabase.GUIDToAssetPath(environmentGUID);
+            environment = AssetDatabase.LoadAssetAtPath<Environment>(path);
+
+            if (environment == null)
+            {
+                Cubemap cubemap = AssetDatabase.LoadAssetAtPath<Cubemap>(path);
+                environment = new Environment();
+                environment.sky.cubemap = cubemap;
+            }
+        }
 
         /// <summary>Update the object reference used for instantiation.</summary>
         /// <param name="viewedObject">The new reference.</param>
@@ -149,12 +201,12 @@ namespace UnityEditor.Rendering.LookDev
 
         internal void ReloadDataOnScriptsReload()
         {
+            LoadEnvironmentFromGUID();
             LoadViewedObject();
         }
 
         //[TODO: add object position]
         //[TODO: add camera frustum]
-        //[TODO: add HDRI]
         //[TODO: manage shadow and lights]
     }
 }
