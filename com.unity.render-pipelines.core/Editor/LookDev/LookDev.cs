@@ -25,6 +25,8 @@ namespace UnityEditor.Rendering.LookDev
 
         public static Context currentContext { get; private set; }
 
+        public static EnvironmentLibrary currentEnvironmentLibrary { get; private set; }
+
         //[TODO: not compatible with multiple displayer. To rework if needed]
         public static IViewDisplayer currentDisplayer => s_Displayer;
 
@@ -128,6 +130,7 @@ namespace UnityEditor.Rendering.LookDev
                 s_Comparator = null;
                 s_Compositor = null;
                 //currentContext = null;
+                currentEnvironmentLibrary = null;
             };
             s_Displayer.OnChangingObjectInView += (go, index, localPos) =>
             {
@@ -150,6 +153,7 @@ namespace UnityEditor.Rendering.LookDev
         public static void PushSceneChangesToRenderer(ViewIndex index)
         {
             s_Stages.UpdateSceneObjects(index);
+            s_Stages.UpdateSceneLighting(index, dataProvider);
             s_Displayer.Repaint();
         }
     }

@@ -299,6 +299,11 @@ namespace UnityEditor.Rendering.LookDev
             if (viewContent.viewedObjectReference != null && !viewContent.viewedObjectReference.Equals(null))
                 viewContent.viewedInstanceInPreview = stage.InstantiateIntoStage(viewContent.viewedObjectReference);
         }
+        
+        public void UpdateSceneLighting(ViewIndex index, IDataProvider provider)
+        {
+            Stage stage = this[index];
+            provider.UpdateSky(stage.camera, m_Contexts.GetViewContent(index).environment?.sky.cubemap, stage.runtimeInterface);
         }
     }
 }
