@@ -18,13 +18,22 @@ namespace UnityEditor.Rendering.LookDev
 
         event Action OnRenderDocAcquisitionTriggered;
         
-        event Action<IMouseEvent> OnMouseEventInViewPort;
+        event Action<IMouseEvent> OnMouseEventInView;
 
         event Action<GameObject, ViewCompositionIndex, Vector2> OnChangingObjectInView;
-        event Action<GameObject, ViewCompositionIndex, Vector2> OnChangingEnvironmentInView;
-
-
+        event Action<Material, ViewCompositionIndex, Vector2> OnChangingMaterialInView;
+        event Action<UnityEngine.Object, ViewCompositionIndex, Vector2> OnChangingEnvironmentInView;
+        
         event Action OnClosed;
+    }
+
+    public interface IEnvironmentDisplayer
+    {
+        void Repaint();
+
+        event Action<UnityEngine.Object> OnAddingEnvironment;
+        event Action<int> OnRemovingEnvironment;
+        event Action<int, int> OnReorderEnvironments;
     }
 
     /// <summary>
@@ -168,7 +177,15 @@ namespace UnityEditor.Rendering.LookDev
             remove => OnChangingObjectInViewInternal -= value;
         }
 
-        event Action<GameObject, ViewCompositionIndex, Vector2> OnChangingEnvironmentInViewInternal;
+        event Action<Material, ViewCompositionIndex, Vector2> OnChangingMaterialInViewInternal;
+        event Action<Material, ViewCompositionIndex, Vector2> IViewDisplayer.OnChangingMaterialInView
+        {
+            add => OnChangingMaterialInViewInternal += value;
+            remove => OnChangingMaterialInViewInternal -= value;
+        }
+
+        event Action<UnityEngine.Object, ViewCompositionIndex, Vector2> OnChangingEnvironmentInViewInternal;
+        event Action<UnityEngine.Object, ViewCompositionIndex, Vector2> IViewDisplayer.OnChangingEnvironmentInView
         {
             add => OnChangingEnvironmentInViewInternal += value;
             remove => OnChangingEnvironmentInViewInternal -= value;
@@ -181,6 +198,26 @@ namespace UnityEditor.Rendering.LookDev
             remove => OnClosedInternal -= value;
         }
 
+        event Action<UnityEngine.Object> OnAddingEnvironmentInternal;
+        event Action<UnityEngine.Object> IEnvironmentDisplayer.OnAddingEnvironment
+        {
+            add => OnAddingEnvironmentInternal += value;
+            remove => OnAddingEnvironmentInternal -= value;
+        }
+
+        event Action<int> OnRemovingEnvironmentInternal;
+        event Action<int> IEnvironmentDisplayer.OnRemovingEnvironment
+        {
+            add => OnRemovingEnvironmentInternal += value;
+            remove => OnRemovingEnvironmentInternal -= value;
+        }
+
+        event Action<int, int> OnReorderEnvironmentsInternal;
+        event Action<int, int> IEnvironmentDisplayer.OnReorderEnvironments
+        {
+            add => OnReorderEnvironmentsInternal += value;
+            remove => OnReorderEnvironmentsInternal -= value;
+        }
 
         void OnEnable()
         {
@@ -196,8 +233,8 @@ namespace UnityEditor.Rendering.LookDev
             rootVisualElement.Add(m_MainContainer);
 
             CreateViews();
-            CreateDropAreas();
             CreateEnvironment();
+            CreateDropAreas();
         }
 
         void OnDisable() => OnClosedInternal?.Invoke();
@@ -269,6 +306,7 @@ namespace UnityEditor.Rendering.LookDev
 
         void CreateDropAreas()
         {
+            // GameObject or Prefab in view
             new DropArea(new[] { typeof(GameObject) }, m_Views[(int)ViewIndex.First], (obj, localPos) =>
             {
                 if (layout == Layout.CustomSplit || layout == Layout.CustomCircular)
@@ -278,6 +316,36 @@ namespace UnityEditor.Rendering.LookDev
             });
             new DropArea(new[] { typeof(GameObject) }, m_Views[(int)ViewIndex.Second], (obj, localPos)
                 => OnChangingObjectInViewInternal?.Invoke(obj as GameObject, ViewCompositionIndex.Second, localPos));
+
+            // Material in view
+            new DropArea(new[] { typeof(GameObject) }, m_Views[(int)ViewIndex.First], (obj, localPos) =>
+            {
+                if (layout == Layout.CustomSplit || layout == Layout.CustomCircular)
+                    OnChangingMaterialInViewInternal?.Invoke(obj as Material, ViewCompositionIndex.Composite, localPos);
+                else
+                    OnChangingMaterialInViewInternal?.Invoke(obj as Material, ViewCompositionIndex.First, localPos);
+            });
+            new DropArea(new[] { typeof(Material) }, m_Views[(int)ViewIndex.Second], (obj, localPos)
+                => OnChangingMaterialInViewInternal?.Invoke(obj as Material, ViewCompositionIndex.Second, localPos));
+
+            // Environment in view
+            new DropArea(new[] { typeof(Environment), typeof(Cubemap) }, m_Views[(int)ViewIndex.First], (obj, localPos) =>
+            {
+                if (layout == Layout.CustomSplit || layout == Layout.CustomCircular)
+                    OnChangingEnvironmentInViewInternal?.Invoke(obj, ViewCompositionIndex.Composite, localPos);
+                else
+                    OnChangingEnvironmentInViewInternal?.Invoke(obj, ViewCompositionIndex.First, localPos);
+            });
+            new DropArea(new[] { typeof(Environment), typeof(Cubemap) }, m_Views[(int)ViewIndex.Second], (obj, localPos)
+                => OnChangingEnvironmentInViewInternal?.Invoke(obj, ViewCompositionIndex.Second, localPos));
+
+            // Environment in library
+            new DropArea(new[] { typeof(Environment), typeof(Cubemap) }, m_EnvironmentContainer, (obj, localPos) =>
+            {
+                //[TODO: check if this come from outside of library]
+                OnAddingEnvironmentInternal?.Invoke(obj);
+                //[TODO: else reorder]
+            });
         }
 
         void CreateEnvironment()
@@ -326,5 +394,10 @@ namespace UnityEditor.Rendering.LookDev
         }
 
         void IViewDisplayer.Repaint() => Repaint();
+
+        void IEnvironmentDisplayer.Repaint()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
